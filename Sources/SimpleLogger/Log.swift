@@ -2,38 +2,52 @@
 // MIT License
 
 import Foundation
+import os
 
 public final class Log {
 
-    public enum Level: String {
-        case info = "INFO"
-        case warning = "WARNING"
-        case error = "ERROR"
-        case debug = "DEBUG"
+    private static let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "App", category: "General")
+
+    private static func formatMessage(_ message: String, file: String, function: String, line: Int) -> String {
+        let fileName = (file as NSString).lastPathComponent
+        return "[\(fileName):\(line) \(function)] \(message)"
     }
 
-    private static let formatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateFormat = "yyyy-MM-dd HH:mm:ss.SSS"
-        f.locale = .autoupdatingCurrent
-        return f
-    }()
-
-    public static func message(
+    public static func info(
         _ message: String,
-        level: Level = .info,
         file: String = #file,
         function: String = #function,
         line: Int = #line
     ) {
-        let timestamp = formatter.string(from: Date())
+        logger.info("\(formatMessage(message, file: file, function: function, line: line), privacy: .public)")
+    }
 
+    public static func warning(
+        _ message: String,
+        file: String = #file,
+        function: String = #function,
+        line: Int = #line
+    ) {
+        logger.warning("\(formatMessage(message, file: file, function: function, line: line), privacy: .public)")
+    }
+
+    public static func error(
+        _ message: String,
+        file: String = #file,
+        function: String = #function,
+        line: Int = #line
+    ) {
+        logger.error("\(formatMessage(message, file: file, function: function, line: line), privacy: .public)")
+    }
+
+    public static func debug(
+        _ message: String,
+        file: String = #file,
+        function: String = #function,
+        line: Int = #line
+    ) {
         #if DEBUG
-        let fileName = (file as NSString).lastPathComponent
-        print("[\(timestamp)] [\(level.rawValue)] \(fileName):\(line) \(function) -> \(message)")
-        #else
-        guard level != .debug else { return }
-        print("[\(timestamp)] [\(level.rawValue)] \(message)")
+        logger.debug("\(formatMessage(message, file: file, function: function, line: line), privacy: .public)")
         #endif
     }
 }

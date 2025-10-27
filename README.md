@@ -1,28 +1,19 @@
 
 # Log
 
-**Swift Package Manager** で利用できるシンプルなログユーティリティです。
-`Log.message(_:, level:file:function:line:)` を呼び出すだけで、タイムスタンプ付きでコンソールに出力します。
-リリースビルドでは `debug` レベルのログは自動で除外されます。
+`Log` は、Apple の [`os.Logger`](https://developer.apple.com/documentation/os/logger) をラップした軽量な Swift ロギングユーティリティです。
 
 ---
 
 ## 📖 使い方
 
 ```swift
-import SimpleLogger
 
-// 何か処理
-Log.message("ユーザーがログインしました")
+Log.info("アプリの起動を開始しました")
+Log.warning("低メモリ状態を検出しました")
+Log.error("データの読み込みに失敗しました")
+Log.debug("デバッグ情報を出力します")
 
-// カスタムレベル
-Log.message("データ取得に失敗しました", level: .error)
-
-// ファイル名・行番号・関数名を自動取得
-func fetchData() {
-    Log.message("データ取得開始")
-    // ...
-}
 ```
 
 ### レベル一覧
