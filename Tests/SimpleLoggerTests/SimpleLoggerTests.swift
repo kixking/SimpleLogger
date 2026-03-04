@@ -24,5 +24,7 @@ final class SimpleLoggerTests: XCTestCase {
         }
         
         Log.error(TestError())
+        Log.fault("Fault message")
+        Log.trace()
     }
 }
