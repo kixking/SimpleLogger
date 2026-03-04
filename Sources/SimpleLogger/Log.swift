@@ -83,4 +83,24 @@ public final class Log {
         logger.debug("\(formatMessage(message, file: file, function: function, line: line))")
         #endif
     }
+
+    public static func fault(
+        _ message: String,
+        file: String = #file,
+        function: String = #function,
+        line: Int = #line
+    ) {
+        logger.fault("\(formatMessage(message, file: file, function: function, line: line))")
+    }
+
+    public static func trace(
+        file: String = #file,
+        function: String = #function,
+        line: Int = #line
+    ) {
+        #if DEBUG
+        let fileName = (file as NSString).lastPathComponent
+        logger.debug("→ [\(fileName):\(line) \(function)]")
+        #endif
+    }
 }
