@@ -8,19 +8,28 @@ public final class Log {
 
     private static var subsystem = Bundle.main.bundleIdentifier ?? "App"
     private static var category = "General"
-    
-    private static var logger: Logger = {
-        return Logger(subsystem: subsystem, category: category)
-    }()
+    private static let lock = NSLock()
+    private static var _logger: Logger?
+
+    private static var logger: Logger {
+        lock.lock()
+        defer { lock.unlock() }
+        if let cached = _logger { return cached }
+        let newLogger = Logger(subsystem: subsystem, category: category)
+        _logger = newLogger
+        return newLogger
+    }
 
     /// Configures the logger with a specific subsystem and category.
     /// - Parameters:
     ///   - subsystem: The subsystem identifier (usually the bundle ID).
     ///   - category: The category for the logs.
     public static func configure(subsystem: String, category: String) {
+        lock.lock()
+        defer { lock.unlock() }
         self.subsystem = subsystem
         self.category = category
-        self.logger = Logger(subsystem: subsystem, category: category)
+        _logger = nil
     }
 
     private static func formatMessage(_ message: String, file: String, function: String, line: Int) -> String {
@@ -54,7 +63,7 @@ public final class Log {
     ) {
         logger.error("\(formatMessage(message, file: file, function: function, line: line))")
     }
-    
+
     public static func error(
         _ error: Error,
         file: String = #file,

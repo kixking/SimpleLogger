@@ -5,6 +5,9 @@ final class SimpleLoggerTests: XCTestCase {
     func testConfiguration() {
         // Just verify that calling configure doesn't crash
         Log.configure(subsystem: "com.example.test", category: "Test")
+
+        // Verify that configure resets the logger cache
+        Log.configure(subsystem: "com.example.another", category: "Another")
     }
     
     func testLogExecution() {
