@@ -21,7 +21,7 @@ Log.configure(subsystem: "com.example.MyApp", category: "Networking")
 Log.info("アプリの起動を開始しました")
 Log.warning("低メモリ状態を検出しました")
 
-// エラーログ（Error型を直接渡せます）
+// エラーログ（Error型を直接渡せます。String(describing:) で詳細を記録します）
 Log.error(someError)
 // またはメッセージ
 Log.error("データの読み込みに失敗しました")
@@ -36,15 +36,27 @@ Log.fault("重大なシステム障害が発生しました")
 Log.trace()
 ```
 
-### 3. パフォーマンス
+### 3. カテゴリ別ロガー
 
-`Log` はロガーインスタンスをキャッシュするため、複数回のログ呼び出しでも効率的です。
-内部的には `NSLock` を使用してスレッドセーフティを確保しています。
+機能ごとにカテゴリを分けたい場合は、インスタンスを作成できます。
 
-### 4. プライバシーについて
+```swift
+let networkLog = Log(category: "Network")
+networkLog.info("リクエストを開始しました")
 
-セキュリティのため、動的な文字列（変数など）はデフォルトで `<private>` と表示される場合があります。
-開発中はデバッガを接続するか、コンソールアプリの設定で表示を有効にしてください。
+// サブシステムも個別に指定可能
+let dbLog = Log(subsystem: "com.example.MyApp", category: "Database")
+```
+
+### 4. パフォーマンス
+
+`Log` はデフォルトロガーをキャッシュするため、複数回のログ呼び出しでも効率的です。
+内部状態はロックで保護されており、Swift 6 の strict concurrency にも対応しています。
+
+### 5. プライバシーについて
+
+ログメッセージは `privacy: .public` で記録されるため、リリースビルドでも Console.app で `<private>` にならず内容を確認できます。
+そのため、個人情報やトークンなどの機密情報をログメッセージに含めないよう注意してください。
 
 ### レベル一覧
 
