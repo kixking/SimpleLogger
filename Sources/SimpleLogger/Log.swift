@@ -13,7 +13,8 @@ import os
 ///     log.info("Request started")
 public struct Log: Sendable {
 
-    private let logger: Logger
+    @usableFromInline
+    let logger: Logger
 
     /// Creates a logger for a dedicated category.
     /// - Parameters:
@@ -21,10 +22,12 @@ public struct Log: Sendable {
     ///     subsystem (the main bundle identifier unless changed via
     ///     ``configure(subsystem:category:)``).
     ///   - category: The category for the logs.
+    @inlinable
     public init(subsystem: String? = nil, category: String) {
         logger = Logger(subsystem: subsystem ?? Self.storage.subsystem, category: category)
     }
 
+    @inlinable
     public func info(
         _ message: @autoclosure () -> String,
         file: String = #fileID,
@@ -35,6 +38,7 @@ public struct Log: Sendable {
         logger.info("\(formatted, privacy: .public)")
     }
 
+    @inlinable
     public func warning(
         _ message: @autoclosure () -> String,
         file: String = #fileID,
@@ -45,6 +49,7 @@ public struct Log: Sendable {
         logger.warning("\(formatted, privacy: .public)")
     }
 
+    @inlinable
     public func error(
         _ message: @autoclosure () -> String,
         file: String = #fileID,
@@ -55,6 +60,7 @@ public struct Log: Sendable {
         logger.error("\(formatted, privacy: .public)")
     }
 
+    @inlinable
     public func error(
         _ error: Error,
         file: String = #fileID,
@@ -65,6 +71,7 @@ public struct Log: Sendable {
         logger.error("\(formatted, privacy: .public)")
     }
 
+    @inlinable
     public func debug(
         _ message: @autoclosure () -> String,
         file: String = #fileID,
@@ -77,6 +84,7 @@ public struct Log: Sendable {
         #endif
     }
 
+    @inlinable
     public func fault(
         _ message: @autoclosure () -> String,
         file: String = #fileID,
@@ -87,6 +95,7 @@ public struct Log: Sendable {
         logger.fault("\(formatted, privacy: .public)")
     }
 
+    @inlinable
     public func trace(
         file: String = #fileID,
         function: String = #function,
@@ -99,28 +108,68 @@ public struct Log: Sendable {
 
     // MARK: - Formatting
 
+    @usableFromInline
     static func format(_ message: String, file: String, function: String, line: Int) -> String {
         "[\(fileName(file)):\(line) \(function)] \(message)"
     }
 
-    static func fileName(_ file: String) -> String {
-        file.split(separator: "/").last.map(String.init) ?? file
+    @usableFromInline
+    static func fileName(_ file: String) -> Substring {
+        if let lastSlashIndex = file.lastIndex(of: "/") {
+            return file[file.index(after: lastSlashIndex)...]
+        }
+        return file[...]
+    }
+
+    // MARK: - Low-latency synchronization lock
+
+    @usableFromInline
+    final class UnfairLock: @unchecked Sendable {
+        @usableFromInline
+        let _lock: UnsafeMutablePointer<os_unfair_lock>
+
+        @usableFromInline
+        init() {
+            _lock = UnsafeMutablePointer<os_unfair_lock>.allocate(capacity: 1)
+            _lock.initialize(to: os_unfair_lock())
+        }
+
+        deinit {
+            _lock.deinitialize(count: 1)
+            _lock.deallocate()
+        }
+
+        @inlinable
+        func lock() {
+            os_unfair_lock_lock(_lock)
+        }
+
+        @inlinable
+        func unlock() {
+            os_unfair_lock_unlock(_lock)
+        }
     }
 
     // MARK: - Shared default logger
 
-    private final class Storage: @unchecked Sendable {
-        private let lock = NSLock()
-        private var _subsystem = Bundle.main.bundleIdentifier ?? "App"
-        private var _category = "General"
-        private var cached: Log?
+    @usableFromInline
+    final class Storage: @unchecked Sendable {
+        @usableFromInline let lock = UnfairLock()
+        @usableFromInline var _subsystem = Bundle.main.bundleIdentifier ?? "App"
+        @usableFromInline var _category = "General"
+        @usableFromInline var cached: Log?
 
+        @usableFromInline
+        init() {}
+
+        @inlinable
         var subsystem: String {
             lock.lock()
             defer { lock.unlock() }
             return _subsystem
         }
 
+        @inlinable
         var current: Log {
             lock.lock()
             defer { lock.unlock() }
@@ -130,6 +179,7 @@ public struct Log: Sendable {
             return log
         }
 
+        @inlinable
         func configure(subsystem: String, category: String) {
             lock.lock()
             defer { lock.unlock() }
@@ -139,16 +189,19 @@ public struct Log: Sendable {
         }
     }
 
-    private static let storage = Storage()
+    @usableFromInline
+    static let storage = Storage()
 
     /// Configures the shared default logger with a specific subsystem and category.
     /// - Parameters:
     ///   - subsystem: The subsystem identifier (usually the bundle ID).
     ///   - category: The category for the logs.
+    @inlinable
     public static func configure(subsystem: String, category: String) {
         storage.configure(subsystem: subsystem, category: category)
     }
 
+    @inlinable
     public static func info(
         _ message: @autoclosure () -> String,
         file: String = #fileID,
@@ -158,6 +211,7 @@ public struct Log: Sendable {
         storage.current.info(message(), file: file, function: function, line: line)
     }
 
+    @inlinable
     public static func warning(
         _ message: @autoclosure () -> String,
         file: String = #fileID,
@@ -167,6 +221,7 @@ public struct Log: Sendable {
         storage.current.warning(message(), file: file, function: function, line: line)
     }
 
+    @inlinable
     public static func error(
         _ message: @autoclosure () -> String,
         file: String = #fileID,
@@ -176,6 +231,7 @@ public struct Log: Sendable {
         storage.current.error(message(), file: file, function: function, line: line)
     }
 
+    @inlinable
     public static func error(
         _ error: Error,
         file: String = #fileID,
@@ -185,6 +241,7 @@ public struct Log: Sendable {
         storage.current.error(error, file: file, function: function, line: line)
     }
 
+    @inlinable
     public static func debug(
         _ message: @autoclosure () -> String,
         file: String = #fileID,
@@ -196,6 +253,7 @@ public struct Log: Sendable {
         #endif
     }
 
+    @inlinable
     public static func fault(
         _ message: @autoclosure () -> String,
         file: String = #fileID,
@@ -205,6 +263,7 @@ public struct Log: Sendable {
         storage.current.fault(message(), file: file, function: function, line: line)
     }
 
+    @inlinable
     public static func trace(
         file: String = #fileID,
         function: String = #function,

@@ -20,11 +20,17 @@ let package = Package(
     ],
     targets: [
         .target(
-            name: "SimpleLogger"
+            name: "SimpleLogger",
+            swiftSettings: [
+                .enableUpcomingFeature("StrictConcurrency")
+            ]
         ),
         .testTarget(
             name: "SimpleLoggerTests",
-            dependencies: ["SimpleLogger"]
+            dependencies: ["SimpleLogger"],
+            swiftSettings: [
+                .enableUpcomingFeature("StrictConcurrency")
+            ]
         ),
     ]
 )

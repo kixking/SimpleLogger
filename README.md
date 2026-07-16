@@ -1,6 +1,9 @@
-# Log
+# SimpleLogger (Log)
 
-`Log` は、Apple の [`os.Logger`](https://developer.apple.com/documentation/os/logger) をラップした軽量な Swift ロギングユーティリティです。
+`Log` は、Apple の [`os.Logger`](https://developer.apple.com/documentation/os/logger) をラップした軽量かつ堅牢な Swift ロギングユーティリティです。
+
+> **Swift 6 Ready / Strict Concurrency 適合**  
+> 本ライブラリは `Sendable` に適合しており、Swift 6 の厳格な並行処理チェックに対応しています。
 
 ---
 
@@ -26,13 +29,13 @@ Log.error(someError)
 // またはメッセージ
 Log.error("データの読み込みに失敗しました")
 
-// デバッグ（リリースビルドでは除外されます）
+// デバッグ（リリースビルドではコンパイル段階で完全に除外されます）
 Log.debug("デバッグ情報を出力します")
 
 // クリティカルな障害（クラッシュ前後の診断に使用）
 Log.fault("重大なシステム障害が発生しました")
 
-// 関数入退場トレース（#if DEBUG のみ有効）
+// 関数入退場トレース（#if DEBUG のみ有効。リリースビルドでは完全に除外されます）
 Log.trace()
 ```
 
@@ -48,15 +51,38 @@ networkLog.info("リクエストを開始しました")
 let dbLog = Log(subsystem: "com.example.MyApp", category: "Database")
 ```
 
-### 4. パフォーマンス
+### 4. プロジェクト全体から呼び出せる設計（推奨）
 
-`Log` はデフォルトロガーをキャッシュするため、複数回のログ呼び出しでも効率的です。
-内部状態はロックで保護されており、Swift 6 の strict concurrency にも対応しています。
+各 Swift ファイルで毎回 `import SimpleLogger` を記述する手間を省くため、アプリターゲットの共通設定ファイル（例: `App.swift` や `Exports.swift` など）で **`@_exported import`** を宣言することを強く推奨します。
 
-### 5. プライバシーについて
+```swift
+// Exports.swift
+@_exported import SimpleLogger
+```
 
-ログメッセージは `privacy: .public` で記録されるため、リリースビルドでも Console.app で `<private>` にならず内容を確認できます。
-そのため、個人情報やトークンなどの機密情報をログメッセージに含めないよう注意してください。
+これにより、そのモジュール内のすべてのファイルから `import` なしで直接 `Log.info(...)` を呼び出せるようになります。
+
+> [!WARNING]
+> **独自のグローバルラップ関数を作成しないでください**  
+> 以下のように独自のラップ関数を作ると、ログに記録されるファイル名や行番号がすべてそのラップ関数の位置に固定されてしまい、実際のログ発生場所が判別できなくなります。
+> ```swift
+> // ❌ 非推奨（ファイル名・行番号がズレる原因になります）
+> func myLogInfo(_ msg: String) {
+>     Log.info(msg) // 常にこのファイルの行番号が記録されてしまいます
+> }
+> ```
+> 呼び出し元の情報を正しく取得するため、`@_exported import` を用いて `Log.info` 自体を直接呼び出してください。
+
+### 5. パフォーマンスと最適化
+
+* **`@inlinable` 最適化**: ログAPI全体に `@inlinable` 最適化を施しています。これによりモジュール境界を越えた呼び出しのオーバーヘッドを削減し、特にリリースビルド時には `#if DEBUG` に指定された `Log.debug` や `Log.trace` への呼び出し自体がコンパイラによって完全に削除（インライン消去）されます。
+* **低アロケーション**: ログ出力時に一時配列を生成しないよう、パス解析を最適化しており、スレッドセーフなロック機構 (`NSLock`) の下でも最小限のオーバーヘッドで動作します。
+
+### 6. プライバシーについて
+
+> [!IMPORTANT]
+> 本ライブラリを通じて出力されるログメッセージは、コンソールでの視認性を考慮して一律 `privacy: .public` として `os.Logger` に渡されます。
+> リリースビルドの Console.app でも `<private>` にマスクされずに内容を確認できる利点がありますが、**個人情報、アクセストークン、パスワードなどの機密情報をログメッセージ内に直接含めないよう十分に注意してください。**
 
 ### レベル一覧
 

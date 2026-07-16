@@ -60,4 +60,27 @@ final class SimpleLoggerTests: XCTestCase {
         let custom = Log(subsystem: "com.example.custom", category: "Custom")
         custom.info("Custom subsystem message")
     }
+
+    // MARK: - Concurrency
+
+    @MainActor
+    func testConcurrentLogging() {
+        let expectation = self.expectation(description: "Concurrent logging completed")
+
+        // 複数のスレッドから同時にアクセスし、デッドロックやデータレースが発生しないか検証
+        DispatchQueue.global().async {
+            DispatchQueue.concurrentPerform(iterations: 100) { index in
+                if index % 10 == 0 {
+                    Log.configure(subsystem: "com.example.concurrent-\(index)", category: "Test-\(index)")
+                }
+                Log.info("Concurrent log message \(index)")
+
+                let customLogger = Log(category: "Concurrent-Category-\(index)")
+                customLogger.info("Custom concurrent log message \(index)")
+            }
+            expectation.fulfill()
+        }
+
+        waitForExpectations(timeout: 5.0)
+    }
 }
