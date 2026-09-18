@@ -5,12 +5,27 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Build
+
+      - name: Build (Debug)
         run: swift build
+
+      - name: Build (Release)
+        run: swift build -c release
+
       - name: Run tests
         run: swift test
+
+      - name: Run tests with Thread Sanitizer
+        run: swift test --sanitize=thread
