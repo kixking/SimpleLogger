@@ -1,6 +1,7 @@
 // Log.swift
 // MIT License
 
+#if canImport(os)
 import Foundation
 import os
 
@@ -274,3 +275,7 @@ public struct Log: Sendable {
         #endif
     }
 }
+
+#else
+#error("SimpleLogger is only supported on Apple platforms where the 'os' module is available.")
+#endif

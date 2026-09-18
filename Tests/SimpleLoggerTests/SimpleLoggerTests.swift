@@ -83,4 +83,23 @@ final class SimpleLoggerTests: XCTestCase {
 
         waitForExpectations(timeout: 5.0)
     }
+
+    func testTaskGroupConcurrentLogging() async {
+        // Swift Concurrency (Structured Concurrency) の TaskGroup を用い、
+        // 多数の並行 Task から同時にアクセスした際のスレッド安全性とデータレース不在を検証
+        await withTaskGroup(of: Void.self) { group in
+            for index in 0..<100 {
+                group.addTask {
+                    if index % 10 == 0 {
+                        Log.configure(subsystem: "com.example.taskgroup-\(index)", category: "Test-\(index)")
+                    }
+                    Log.info("TaskGroup log message \(index)")
+
+                    let customLogger = Log(category: "TaskGroup-Category-\(index)")
+                    customLogger.info("Custom taskgroup log message \(index)")
+                }
+            }
+        }
+    }
 }
+
